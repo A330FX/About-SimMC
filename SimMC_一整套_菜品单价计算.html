@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算【单品单价】</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 40px;
+            font-size: 28px;
+        }
+        /* 输入控制区域 */
+        .control-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        #targetX {
+            width: 240px;
+            height: 42px;
+            padding: 0 12px;
+            font-size: 16px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        #targetX:focus {
+            border-color: #4299e1;
+        }
+        #generateBtn {
+            height: 42px;
+            padding: 0 28px;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #generateBtn:hover {
+            background-color: #3182ce;
+        }
+        /* 输入框下方居中提示占位，永久固定高度，文字水平居中 */
+       /* 提示容器：整行100%宽、文字水平居中，visibility占位不消失高度，页面不会上下跳动 */
+.notify-placeholder {
+    width: 100%;
+    height: 30px;
+    margin-bottom: 30px;
+    text-align: center;    /* 文字整行水平居中 */
+    line-height: 30px;
+    font-size: 16px;
+    visibility: hidden;    /* 默认隐藏，保留占位高度，不会导致页面偏移 */
+}
+/* 显示状态 */
+.notify-placeholder.show {
+    visibility: visible;
+}
+.notify-success {
+    color: #38a169;
+}
+.notify-warn {
+    color: #d69e2e;
+        }
+        /* 表格标题左右布局 */
+        .table-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 20px;
+            color: #2d3748;
+            margin: 0 0 12px;
+        }
+        /* 左侧标题：左边蓝色竖线 */
+        .title-left {
+            padding-left: 8px;
+            border-left: 4px solid #4299e1;
+            font-size: 20px;
+        }
+        /* 右侧状态文字：统一字号20px，右侧蓝色竖线，保留完整详情提示 */
+        .title-right {
+            padding-right: 8px;
+            border-right: 4px solid #4299e1;
+            font-size: 20px;
+        }
+        .title-right.warn {
+            color: #d69e2e;
+        }
+        /* 表格通用样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        table th, table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+        table th {
+            background-color: #edf2f7;
+            color: #2d3748;
+            font-weight: 600;
+        }
+        /* 回收限制单元格内部分割 */
+        .split-cell {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-around;
+        }
+        .split-left {
+            flex: 1;
+        }
+        .split-line {
+            width: 1px;
+            height: 20px;
+            background-color: #999;
+            margin: 0 6px;
+        }
+        .split-right {
+            flex: 1;
+            color: #666;
+        }
+        /* 表格底部总金额通栏行 */
+        .table-total-row {
+            font-weight: bold;
+            font-size: 16px;
+            background-color: #e6fffa;
+            color: #0d7680;
+        }
+        /* 计算明细大框通用样式 */
+        .calc-box {
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            background: #fff;
+            margin-bottom: 60px;
+        }
+        .calc-box h3 {
+            font-size: 16px;
+            color: #2d3748;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .calc-line {
+            font-size: 14px;
+            padding: 6px 0;
+        }
+        .calc-total-line {
+            font-weight: bold;
+            padding-top: 10px;
+            margin-top: 8px;
+            border-top: 1px dashed #ccc;
+            font-size: 15px;
+            color: #c53030;
+        }
+        /* 生成表格容器，初始隐藏 */
+        .result-table-wrap {
+            display: none;
+        }
+        /* 底部原始表格区域 */
+        .origin-table-wrap {
+            margin-top: 80px;
+        }
+
+.title-right {
+    padding-right: 8px;
+    border-right: 4px solid #4299e1;
+    font-size: 20px;
+}
+.title-right .text-success {
+    color: #38a169;
+}
+.title-right .text-normal {
+    color: #2d3748;
+}
+.title-right.warn .text-normal {
+    color: #2d3748;
+}
+.title-right.warn {
+    color: #d69e2e;
+}
+    </style>
+</head>
+<body>
+    <h1>计算【单品单价】</h1>
+
+    <!-- 输入&生成控制行 -->
+    <div class="control-wrap">
+        <input type="number" id="targetX" placeholder="输入 [总]购买价格 - A_FX - 【反馈】946447223【群】" min="1" step="0.01">
+        <button id="generateBtn">生成</button>
+    </div>
+
+    <!-- 输入框下方居中提示栏，文字水平居中 -->
+    <div class="notify-placeholder" id="notifyText"></div>
+
+    <!-- 生成结果表格（点击生成后显示）【列顺序：作物品类 星级 单品单价 购买数量】 -->
+    <div class="result-table-wrap" id="resultWrap">
+        <div class="table-title">
+            <span class="title-left">生成定价表格</span>
+            <!-- 右侧完整详情提示：字号20px，右侧蓝色竖线，保留上一版完整文字逻辑 -->
+            <span class="title-right" id="resultStatus"></span>
+        </div>
+        <table id="resultTable">
+            <thead>
+                <tr>
+                    <th>作物品类</th>
+                    <th>星级</th>
+                    <th>单品单价（云币）</th>
+                    <th>购买数量</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+            <!-- 生成表格底部总购买价通栏 -->
+            <tfoot>
+                <tr class="table-total-row">
+                    <td colspan="4" id="resultTotalText"></td>
+                </tr>
+            </tfoot>
+        </table>
+        <!-- 生成表格配套计算明细框 -->
+        <div class="calc-box" id="resultCalcBox">
+            <h3>定价总价计算明细</h3>
+            <div id="resultCalcContent"></div>
+        </div>
+    </div>
+
+    <!-- 底部常驻原始数据表 -->
+    <div class="origin-table-wrap">
+        <div class="table-title">
+            <span class="title-left">原始基础数据表</span>
+        </div>
+        <table id="originTable">
+            <thead>
+                <tr>
+                    <th>作物品类</th>
+                    <th>种子购买价格(云币)</th>
+                    <th>星级</th>
+                    <th>单件回收价(云币)</th>
+                    <th>个人回收限制</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- A组 大豆 -->
+                <tr>
+                    <td rowspan="3">大豆</td>
+                    <td rowspan="9">39.00</td>
+                    <td>★☆☆</td>
+                    <td>8.00</td>
+                    <td>
+                        <div class="split-cell">
+                            <span class="split-left">108</span>
+                            <span class="split-line"></span>
+                            <span class="split-right">(64+44)</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>62.00</td>
+                    <td>54</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>156.00</td>
+                    <td>27</td>
+                </tr>
+                <!-- A组 玉米 -->
+                <tr>
+                    <td rowspan="3">玉米</td>
+                    <td>★☆☆</td>
+                    <td>8.00</td>
+                    <td>
+                        <div class="split-cell">
+                            <span class="split-left">108</span>
+                            <span class="split-line"></span>
+                            <span class="split-right">(64+44)</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>62.00</td>
+                    <td>54</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>156.00</td>
+                    <td>27</td>
+                </tr>
+                <!-- A组 茄子 -->
+                <tr>
+                    <td rowspan="3">茄子</td>
+                    <td>★☆☆</td>
+                    <td>8.00</td>
+                    <td>
+                        <div class="split-cell">
+                            <span class="split-left">108</span>
+                            <span class="split-line"></span>
+                            <span class="split-right">(64+44)</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>62.00</td>
+                    <td>54</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>156.00</td>
+                    <td>27</td>
+                </tr>
+                <!-- B组 蘑菇 -->
+                <tr>
+                    <td rowspan="3">蘑菇</td>
+                    <td rowspan="6">58.00</td>
+                    <td>★☆☆</td>
+                    <td>12.00</td>
+                    <td>
+                        <div class="split-cell">
+                            <span class="split-left">72</span>
+                            <span class="split-line"></span>
+                            <span class="split-right">(64+8)</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>93.00</td>
+                    <td>36</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>233.00</td>
+                    <td>18</td>
+                </tr>
+                <!-- B组 水稻 -->
+                <tr>
+                    <td rowspan="3">水稻</td>
+                    <td>★☆☆</td>
+                    <td>12.00</td>
+                    <td>
+                        <div class="split-cell">
+                            <span class="split-left">72</span>
+                            <span class="split-line"></span>
+                            <span class="split-right">(64+8)</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>93.00</td>
+                    <td>36</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>233.00</td>
+                    <td>18</td>
+                </tr>
+                <!-- C组 水晶番茄 -->
+                <tr>
+                    <td rowspan="3">水晶番茄</td>
+                    <td rowspan="3">117.00</td>
+                    <td>★☆☆</td>
+                    <td>23.00</td>
+                    <td>36</td>
+                </tr>
+                <tr>
+                    <td>★★☆</td>
+                    <td>187.00</td>
+                    <td>18</td>
+                </tr>
+                <tr>
+                    <td>★★★</td>
+                    <td>467.00</td>
+                    <td>9</td>
+                </tr>
+            </tbody>
+            <!-- 原始表格底部总回收金额通栏 -->
+            <tfoot>
+                <tr class="table-total-row">
+                    <td colspan="5">[总]回收价格：50481(云币)</td>
+                </tr>
+            </tfoot>
+        </table>
+        <!-- 原始表常驻回收计算明细框 -->
+        <div class="calc-box origin-calc-box">
+            <h3>全套回收总价计算明细（永久显示）</h3>
+            <div class="calc-line">3种(A组) × 108 × 8 = 2592</div>
+            <div class="calc-line">3种(A组) × 54 × 62 = 10044</div>
+            <div class="calc-line">3种(A组) × 27 × 156 = 12636</div>
+            <div class="calc-line">2种(B组) × 72 × 12 = 1728</div>
+            <div class="calc-line">2种(B组) × 36 × 93 = 6696</div>
+            <div class="calc-line">2种(B组) × 18 × 233 = 8388</div>
+            <div class="calc-line">1种(C组) × 36 × 23 = 828</div>
+            <div class="calc-line">1种(C组) × 18 × 187 = 3366</div>
+            <div class="calc-line">1种(C组) × 9 × 467 = 4203</div>
+            <div class="calc-total-line">全部相加 = 50481 云币</div>
+        </div>
+    </div>
+
+    <script>
+        // 全局固定总回收收益 A_FX
+        const TOTAL_RECYCLE = 50481;
+        // 上次生成的总价
+        let lastTotalCost = 0;
+        // 标记输入框是否被修改过（上次生成后）
+        let hasInputChanged = false;
+        // 作物基础数据：分组、名称、各星级{购买数量,回收单价,作物种类数}
+        const cropData = [
+            {
+                group: "A",
+                count: 3,
+                nameList: ["大豆", "玉米", "茄子"],
+                starList: [
+                    { star: "★☆☆", num: 108, recycle: 8 },
+                    { star: "★★☆", num: 54, recycle: 62 },
+                    { star: "★★★", num: 27, recycle: 156 }
+                ]
+            },
+            {
+                group: "B",
+                count: 2,
+                nameList: ["蘑菇", "水稻"],
+                starList: [
+                    { star: "★☆☆", num: 72, recycle: 12 },
+                    { star: "★★☆", num: 36, recycle: 93 },
+                    { star: "★★★", num: 18, recycle: 233 }
+                ]
+            },
+            {
+                group: "C",
+                count: 1,
+                nameList: ["水晶番茄"],
+                starList: [
+                    { star: "★☆☆", num: 36, recycle: 23 },
+                    { star: "★★☆", num: 18, recycle: 187 },
+                    { star: "★★★", num: 9, recycle: 467 }
+                ]
+            }
+        ];
+
+        // DOM元素
+        const inputX = document.getElementById("targetX");
+        const btnGen = document.getElementById("generateBtn");
+        const resultWrap = document.getElementById("resultWrap");
+        const resultTbody = document.querySelector("#resultTable tbody");
+        const resultTotalText = document.getElementById("resultTotalText");
+        const resultCalcContent = document.getElementById("resultCalcContent");
+        const resultStatus = document.getElementById("resultStatus");
+        const notifyText = document.getElementById("notifyText");
+
+        // 向上取两位小数工具函数
+        function ceilTwoDecimal(num) {
+            return (Math.ceil(num * 100) / 100).toFixed(2);
+        }
+
+        // 更新标题右侧完整详情提示（保留上一版完整文字逻辑）
+function updateTitleStatus(isSuccess) {
+    if (lastTotalCost <= 0) {
+        resultStatus.innerHTML = "";
+        resultStatus.className = "title-right";
+        return;
+    }
+    if (isSuccess) {
+        // 生成成功文字绿色，总价文字黑色
+        resultStatus.innerHTML = `<span class="text-success">生成成功｜</span><span class="text-normal">当前 [总]购买价格：${lastTotalCost.toFixed(2)}(云币)</span>`;
+        resultStatus.className = "title-right";
+    } else {
+        // 警告整行黄色，总价部分黑色
+        resultStatus.innerHTML = `<span class="text-normal">当前定价 [总]购买价格：${lastTotalCost.toFixed(2)}(云币)</span>｜输入框已被修改，暂未被再次生成`;
+        resultStatus.className = "title-right warn";
+    }
+}
+
+        // 更新输入框下方居中简短提示
+        // 更新输入框下方居中简短提示
+// 更新输入框下方居中简短提示
+function updateBottomNotify(isSuccess) {
+    const notifyDom = document.getElementById("notifyText");
+    if(lastTotalCost <= 0){
+        notifyDom.className = "notify-placeholder";
+        notifyDom.innerText = "";
+        notifyDom.dataset.type = "";
+        return;
+    }
+    if(isSuccess){
+        notifyDom.innerText = "生成成功";
+        notifyDom.className = "notify-placeholder show notify-success";
+        notifyDom.dataset.type = "success"; // 标记为成功提示，点击页面可清除
+    }else{
+        notifyDom.innerText = "输入框内容已被修改｜没有重新生成";
+        notifyDom.className = "notify-placeholder show notify-warn";
+        notifyDom.dataset.type = "warn"; // 标记为警告提示，点击页面不会清除
+    }
+}
+        // 生成表格逻辑
+        function renderResultTable(X) {
+            const k = X / TOTAL_RECYCLE;
+            resultTbody.innerHTML = "";
+            resultCalcContent.innerHTML = "";
+            let totalCost = 0;
+
+            for (const groupItem of cropData) {
+                const nameArr = groupItem.nameList;
+                const starArr = groupItem.starList;
+                const groupCount = groupItem.count;
+                const priceMap = {};
+                for (const s of starArr) {
+                    const theory = s.recycle * k;
+                    priceMap[s.star] = ceilTwoDecimal(theory);
+                }
+                nameArr.forEach((cropName, cropIdx) => {
+                    starArr.forEach((starItem, starIdx) => {
+                        const tr = document.createElement("tr");
+                        const rowSpan = starArr.length;
+                        let nameTd = `<td>${cropName}</td>`;
+                        if (starIdx === 0) {
+                            nameTd = `<td rowspan="${rowSpan}">${cropName}</td>`;
+                        } else {
+                            nameTd = `<td style="display:none"></td>`;
+                        }
+                        tr.innerHTML = `
+                            ${nameTd}
+                            <td>${starItem.star}</td>
+                            <td>${priceMap[starItem.star]}</td>
+                            <td>${starItem.num}</td>
+                        `;
+                        resultTbody.appendChild(tr);
+                    })
+                })
+                for (const s of starArr) {
+                    const unitPrice = parseFloat(priceMap[s.star]);
+                    const lineTotal = groupCount * s.num * unitPrice;
+                    totalCost += lineTotal;
+                    const lineDom = document.createElement("div");
+                    lineDom.className = "calc-line";
+                    lineDom.innerText = `${groupCount}种 × ${s.num} × ${unitPrice} = ${lineTotal.toFixed(2)}`;
+                    resultCalcContent.appendChild(lineDom);
+                }
+            }
+            const totalLine = document.createElement("div");
+            totalLine.className = "calc-total-line";
+            totalLine.innerText = `全部相加 = ${totalCost.toFixed(2)} 云币`;
+            resultCalcContent.appendChild(totalLine);
+            resultTotalText.innerText = `[总]购买价格：${totalCost.toFixed(2)}(云币)`;
+            // 保存总价，重置修改标记
+            lastTotalCost = totalCost;
+            hasInputChanged = false;
+            // 同步更新两处提示
+            updateTitleStatus(true);
+            updateBottomNotify(true);
+            resultWrap.style.display = "block";
+        }
+
+        // 点击生成按钮
+        btnGen.addEventListener("click", () => {
+            const X = parseFloat(inputX.value);
+            if (isNaN(X) || X <= 0) {
+                alert("请输入有效的正数目标成本X");
+                return;
+            }
+            renderResultTable(X);
+        })
+
+        // 监听输入框修改事件
+        inputX.addEventListener("input", () => {
+            if (lastTotalCost > 0) {
+                hasInputChanged = true;
+                updateTitleStatus(false);
+                updateBottomNotify(false);
+            }
+        })
+
+// 页面点击/触摸仅隐藏【生成成功】提示，修改警告文字不消失
+document.addEventListener("mousedown", () => {
+    const notifyDom = document.getElementById("notifyText");
+    // 只有成功提示才隐藏，警告提示跳过
+    if(notifyDom.dataset.type === "success"){
+        notifyDom.className = "notify-placeholder";
+        notifyDom.dataset.type = "";
+    }
+});
+document.addEventListener("touchstart", () => {
+    const notifyDom = document.getElementById("notifyText");
+    if(notifyDom.dataset.type === "success"){
+        notifyDom.className = "notify-placeholder";
+        notifyDom.dataset.type = "";
+    }
+});
+    </script>
+</body>
+</html>
