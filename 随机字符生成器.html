@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机密码生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f7f8fa;
+            --card: #ffffff;
+            --text: #333333;
+            --gray: #666666;
+            --border: #dddddd;
+            --input: #ffffff;
+            --result: #f2f2f2;
+            --blue: #0066cc;
+            --green: #009955;
+            --line: #eeeeee;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --card: #242424;
+                --text: #e0e0e0;
+                --gray: #aaaaaa;
+                --border: #444444;
+                --input: #333333;
+                --result: #333333;
+                --blue: #3399ff;
+                --green: #22cc88;
+                --line: #444444;
+            }
+        }
+
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: var(--bg);
+            padding: 20px;
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 30px auto;
+            background: var(--card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .title {
+            text-align: center;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: normal;
+        }
+
+        .item {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .result-box {
+            position: relative;
+            background: var(--result);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 40px 12px 12px;
+            min-height: 50px;
+            font-family: monospace;
+            font-size: 16px;
+            word-break: break-all;
+            margin-bottom: 8px;
+        }
+
+        .eye {
+            position: absolute;
+            right: 10px;
+            top: 12px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
+        .strength {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s;
+        }
+
+        .weak { background: #ff4444; width: 33%; }
+        .middle { background: #ffaa00; width: 66%; }
+        .strong { background: #00aa33; width: 100%; }
+
+        .strength-text {
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .btn-blue {
+            background: var(--blue);
+            color: #fff;
+        }
+
+        .btn-green {
+            background: var(--green);
+            color: #fff;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-length {
+            width: 90px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--input);
+            color: var(--text);
+        }
+
+        .tip {
+            font-size: 13px;
+            color: var(--gray);
+        }
+
+        .check-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+        }
+
+        input:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">随机密码生成器</div>
+
+        <div class="item">
+            <div class="result-box">
+                <div id="result">**…**</div>
+                <button class="eye" id="eye">👁️</button>
+            </div>
+            <div class="strength"><div class="strength-bar" id="bar"></div></div>
+            <div class="strength-text" id="level">密码强度：未生成</div>
+            <div class="btn-group">
+                <button class="btn btn-blue" id="create">生成密码</button>
+                <button class="btn btn-green" id="copy">复制密码</button>
+            </div>
+        </div>
+
+        <div class="item">
+            <div class="row">
+                <span>密码长度</span>
+                <input type="text" class="input-length" id="length" value="16">
+                <span class="tip">至少1位</span>
+            </div>
+        </div>
+
+        <div class="item">
+            <div class="check-item">
+                <input type="checkbox" id="must">
+                <label>必须包含所有选中类型</label>
+            </div>
+        </div>
+
+        <div class="item">
+            <div>包含字符</div>
+            <div class="check-group">
+                <div class="check-item"><input type="checkbox" id="num" checked><label>数字 0-9</label></div>
+                <div class="check-item"><input type="checkbox" id="upper"><label>大写字母 A-Z</label></div>
+                <div class="check-item"><input type="checkbox" id="lower"><label>小写字母 a-z</label></div>
+                <div class="check-item"><input type="checkbox" id="symbol"><label>符号 !@#$</label></div>
+                <div class="check-item"><input type="checkbox" id="letter"><label>全部字母</label></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const createBtn = document.getElementById('create');
+    const copyBtn = document.getElementById('copy');
+    const resultEl = document.getElementById('result');
+    const eyeBtn = document.getElementById('eye');
+    const barEl = document.getElementById('bar');
+    const levelEl = document.getElementById('level');
+    const lengthEl = document.getElementById('length');
+    const mustEl = document.getElementById('must');
+    const numEl = document.getElementById('num');
+    const upperEl = document.getElementById('upper');
+    const lowerEl = document.getElementById('lower');
+    const symbolEl = document.getElementById('symbol');
+    const letterEl = document.getElementById('letter');
+
+    const num = '0123456789';
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const symbol = '!@#$%^&*()_+-=[]{}|;:\'",./<>?';
+
+    let realPassword = '';
+    let show = false;
+
+    // ✅ 绝对无偏差 密码学安全随机
+    function getSecureRandomInt(max) {
+        const range = Math.floor(2**32 / max) * max;
+        const arr = new Uint32Array(1);
+        do {
+            window.crypto.getRandomValues(arr);
+        } while (arr[0] >= range);
+        return arr[0] % max;
+    }
+
+    // 选项互斥
+    function checkMutex() {
+        if (letterEl.checked) {
+            upperEl.disabled = true;
+            lowerEl.disabled = true;
+        } else {
+            upperEl.disabled = false;
+            lowerEl.disabled = false;
+        }
+        if (upperEl.checked || lowerEl.checked) {
+            letterEl.disabled = true;
+        } else {
+            letterEl.disabled = false;
+        }
+    }
+
+    // 显示刷新
+    function refreshShow() {
+        resultEl.textContent = show ? realPassword : '**…**';
+        if (!realPassword) {
+            barEl.className = 'strength-bar';
+            levelEl.textContent = '密码强度：未生成';
+            return;
+        }
+        let len = realPassword.length;
+        let hasUpper = /[A-Z]/.test(realPassword);
+        let hasLower = /[a-z]/.test(realPassword);
+        let hasNum = /[0-9]/.test(realPassword);
+        let hasSym = /[^A-Za-z0-9]/.test(realPassword);
+        let types = [hasUpper, hasLower, hasNum, hasSym].filter(Boolean).length;
+
+        if (len < 6 || types <= 1) {
+            barEl.className = 'strength-bar weak';
+            levelEl.textContent = '密码强度：弱';
+        } else if (len < 10 || types <= 2) {
+            barEl.className = 'strength-bar middle';
+            levelEl.textContent = '密码强度：中';
+        } else {
+            barEl.className = 'strength-bar strong';
+            levelEl.textContent = '密码强度：强';
+        }
+    }
+
+// 生成密码 A_FX
+function createPassword() {
+    let len = parseInt(lengthEl.value);
+    if (isNaN(len) || len < 1) {
+        alert('请输入正确长度，至少1位');
+        return;
+    }
+
+    let list = [];
+    let chars = '';
+
+    if (numEl.checked) { list.push(num); chars += num; }
+    if (upperEl.checked && !upperEl.disabled) { list.push(upper); chars += upper; }
+    if (lowerEl.checked && !lowerEl.disabled) { list.push(lower); chars += lower; }
+    if (symbolEl.checked) { list.push(symbol); chars += symbol; }
+    if (letterEl.checked && !letterEl.disabled) { list.push(upper+lower); chars += upper+lower; }
+
+    if (chars === '') {
+        alert('请至少选择一种字符');
+        return;
+    }
+
+    let pwd = '';
+
+    if (mustEl.checked && list.length > 0) {
+        if (len < list.length) {
+            alert('长度不能少于选中的类型数量');
+            return;
+        }
+        let mustArr = [];
+        list.forEach(item => mustArr.push(item[getSecureRandomInt(item.length)]));
+        let temp = '';
+        for (let i=0; i<len-list.length; i++) temp += chars[getSecureRandomInt(chars.length)];
+        let all = mustArr.concat(temp.split(''));
+        
+        // 打乱10遍顺序
+        for (let k=0; k<10; k++) {
+            // Fisher-Yates 无偏洗牌
+            for (let i=all.length-1; i>0; i--) {
+                let j = getSecureRandomInt(i+1);
+                [all[i], all[j]] = [all[j], all[i]];
+            }
+        }
+        
+        pwd = all.join('');
+    } else {
+        for (let i=0; i<len; i++) pwd += chars[getSecureRandomInt(chars.length)];
+        
+        // 打乱10遍顺序
+        let pwdArr = pwd.split('');
+        for (let k=0; k<10; k++) {
+            // Fisher-Yates 无偏洗牌
+            for (let i=pwdArr.length-1; i>0; i--) {
+                let j = getSecureRandomInt(i+1);
+                [pwdArr[i], pwdArr[j]] = [pwdArr[j], pwdArr[i]];
+            }
+        }
+        pwd = pwdArr.join('');
+    }
+
+    realPassword = pwd;
+    refreshShow();
+}
+
+    // 复制真实密码
+    function copyPassword() {
+        if (!realPassword) return;
+        navigator.clipboard.writeText(realPassword).then(() => {
+            let old = copyBtn.textContent;
+            copyBtn.textContent = '已复制';
+            setTimeout(() => copyBtn.textContent = old, 1500);
+        });
+    }
+
+    // 眼睛切换
+    eyeBtn.onclick = function() {
+        show = !show;
+        eyeBtn.textContent = show ? '🙈' : '👁️';
+        refreshShow();
+    };
+
+    createBtn.onclick = createPassword;
+    copyBtn.onclick = copyPassword;
+    letterEl.onchange = checkMutex;
+    upperEl.onchange = checkMutex;
+    lowerEl.onchange = checkMutex;
+
+    checkMutex();
+    createPassword();
+</script>
+</body>
+</html>
